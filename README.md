@@ -1,6 +1,6 @@
-# Fashion Store — Garment E-commerce App
+# dristi-user-app
 
-A Flutter-based garment e-commerce mobile application with a professional design system, mock data, and comprehensive UI screens. Built as the mobile frontend for the **Garment E-commerce Platform**.
+A Flutter-based dristi mobile application with a professional design system, mock data, and comprehensive UI screens. Built as the mobile frontend for the **Garment E-commerce Platform**.
 
 ## Tech Stack
 
