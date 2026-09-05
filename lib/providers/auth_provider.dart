@@ -17,8 +17,13 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> checkAuth() async {
     await ApiClient.init();
+
+    // Restore the cached session first so a shopper who closed the app while
+    // signed in is never shown the login screen while the network decides the
+    // token's fate below. A poor connection must not log anyone out.
+    _user = await _loadCachedUser();
+
     if (!await ApiClient.hasToken()) {
-      _user = await _loadCachedUser();
       notifyListeners();
       return;
     }
@@ -29,22 +34,30 @@ class AuthProvider extends ChangeNotifier {
       await _cacheUser(_user!);
     } on ApiException catch (e) {
       if (e.statusCode == 401) {
+        // The access token is rejected — it may simply be expired. Try once to
+        // refresh it, keeping the cached session alive either way.
         try {
           await AuthApiService.refreshToken();
           final profile = await AuthApiService.getProfile();
           _user = User.fromJson(profile);
           await _cacheUser(_user!);
-        } catch (_) {
-          _user = await _loadCachedUser();
-          if (_user == null) {
+        } on ApiException catch (refreshError) {
+          if (refreshError.statusCode == 401) {
+            // The server explicitly rejected the refresh token, so this session
+            // genuinely can no longer be restored. Only then do we sign out.
+            _user = null;
+            await _clearCachedUser();
             await AuthApiService.logout();
           }
+          // Any other refresh failure (offline, timeout, 5xx) is transient —
+          // keep the cached session and tokens so the next launch retries.
+        } catch (_) {
+          // Non-API exception during refresh — keep the cached session.
         }
-      } else {
-        _user = await _loadCachedUser();
       }
+      // Non-401 failures (network, 5xx) also keep the cached session.
     } catch (_) {
-      _user = await _loadCachedUser();
+      // Any other failure — keep the cached session.
     }
     notifyListeners();
   }

@@ -133,7 +133,7 @@ class FaqScreen extends StatelessWidget {
                   Text('Still Need Help?', style: AppTextStyles.subtitle),
                   const SizedBox(height: AppDimensions.sm),
                   _contactLine('Mr. Prakash — Operations Head', Iconsax.user),
-                  _contactLine('+91 629048 0 (Mon-Sat, 10 AM to 7 PM)', Iconsax.call),
+                  _contactLine('+91 6290486090 (Mon-Sat, 10 AM to 7 PM)', Iconsax.call),
                   _contactLine('info@drishtifashions.com', Iconsax.sms),
                 ],
               ),

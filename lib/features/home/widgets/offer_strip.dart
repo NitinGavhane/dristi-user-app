@@ -19,7 +19,9 @@ class OfferStrip extends StatelessWidget {
 
     final message = settings.freeAbove != null && settings.freeAbove! > 0
         ? 'Complimentary delivery on orders above \u20B9${settings.freeAbove!.toStringAsFixed(0)}'
-        : 'Flat \u20B9${settings.fee.toStringAsFixed(0)} delivery, anywhere in India';
+        : settings.hasStateFees
+            ? 'Delivery from \u20B9${settings.minimumFee.toStringAsFixed(0)} · by state'
+            : 'Flat \u20B9${settings.fee.toStringAsFixed(0)} delivery, anywhere in India';
 
     return Container(
       color: AppColors.primaryDark,

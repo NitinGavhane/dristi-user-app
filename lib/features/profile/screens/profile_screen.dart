@@ -224,11 +224,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       _menuItem(
-                        icon: Iconsax.location,
-                        title: 'Delivery Addresses',
-                        onTap: () => Navigator.pushNamed(context, '/profile/addresses'),
-                      ),
-                      _menuItem(
                         icon: Iconsax.wallet,
                         title: 'Dristi Wallet',
                         subtitle: '₹${user.walletBalance.toStringAsFixed(2)}',

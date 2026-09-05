@@ -17,7 +17,8 @@ class DeliveryProvider extends ChangeNotifier {
   /// default (free) policy, which is what a brand-new store has.
   bool get loaded => _loaded;
 
-  double feeFor(double subtotal) => _settings.feeFor(subtotal);
+  double feeFor(double subtotal, {String? state}) =>
+      _settings.feeFor(subtotal, state: state);
 
   Future<void> load() async {
     try {

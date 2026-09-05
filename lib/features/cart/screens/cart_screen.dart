@@ -25,7 +25,11 @@ class _CartScreenState extends State<CartScreen> {
     final items = cart.items;
     final subtotal = cart.subtotal;
     final gst = subtotal * 0.18;
-    final deliveryFee = context.watch<DeliveryProvider>().feeFor(subtotal);
+    final delivery = context.watch<DeliveryProvider>();
+    // No delivery state is known until checkout, so per-state charges show as
+    // an estimate here and are finalised on the checkout screen.
+    final deliveryFee = delivery.feeFor(subtotal);
+    final deliveryLabel = delivery.settings.hasStateFees ? 'Delivery (est.)' : 'Delivery';
     final total = subtotal + gst + deliveryFee;
 
     return Scaffold(
@@ -111,7 +115,7 @@ class _CartScreenState extends State<CartScreen> {
                         _priceRow('GST (18%)', '₹${gst.toStringAsFixed(2)}', AppTextStyles.bodySmall),
                         const SizedBox(height: 6),
                         _priceRow(
-                          'Delivery',
+                          deliveryLabel,
                           deliveryFee > 0
                               ? '₹${deliveryFee.toStringAsFixed(2)}'
                               : 'FREE',

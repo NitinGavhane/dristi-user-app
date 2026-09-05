@@ -82,6 +82,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _methodsError = null;
     });
     try {
+      // The payment-methods endpoint requires a signed-in session, so retry the
+      // request if the token is stale rather than blocking checkout forever.
+      final auth = context.read<AuthProvider>();
+      if (!auth.isLoggedIn) {
+        await auth.checkAuth();
+      }
       final region = _selectedAddress?.country ?? 'IN';
       final methods = await PaymentMethodsApiService.listPaymentMethods(region: region);
       if (!mounted) return;
@@ -98,6 +104,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _methods = methods;
         _selectedMethod = stillOffered ?? (methods.isNotEmpty ? methods.first : null);
         _loadingMethods = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _methods = [];
+        _selectedMethod = null;
+        _loadingMethods = false;
+        _methodsError = e.statusCode == 401
+            ? 'Please sign in again to choose a payment method.'
+            : e.message;
       });
     } catch (_) {
       if (!mounted) return;
@@ -478,7 +494,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // final_amount so the "Pay ₹…" button shows exactly what the order will be
     // charged.
     final gst = subtotal * 0.18;
-    final deliveryFee = _delivery.feeFor(subtotal);
+    // Delivery is priced by the destination state (falls back to the default
+    // fee while no address is picked yet), matching the backend's charge.
+    final deliveryFee = _delivery.feeFor(subtotal, state: _selectedAddress?.state);
     final total = subtotal + gst + deliveryFee;
     final addresses = context.watch<AddressProvider>().addresses;
 
