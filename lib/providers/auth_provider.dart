@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,11 +10,18 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   bool _isLoading = false;
   String? _error;
+  final Completer<void> _initializedCompleter = Completer<void>();
 
   User? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _user != null;
+
+  /// True once the cached session (or its absence) is known and the app can
+  /// decide how to present the UI. Cold start must wait for this before
+  /// navigating, so a slow token refresh can never show a fake logged-out
+  /// screen or push the login page over a live session.
+  Future<void> get initialized => _initializedCompleter.future;
 
   Future<void> checkAuth() async {
     await ApiClient.init();
@@ -22,6 +30,14 @@ class AuthProvider extends ChangeNotifier {
     // signed in is never shown the login screen while the network decides the
     // token's fate below. A poor connection must not log anyone out.
     _user = await _loadCachedUser();
+
+    // The session's presence is now decided — unblock the splash so the app
+    // can open in the correct state while the token refresh below runs in the
+    // background and silently updates the session.
+    if (!_initializedCompleter.isCompleted) {
+      _initializedCompleter.complete();
+      notifyListeners();
+    }
 
     if (!await ApiClient.hasToken()) {
       notifyListeners();

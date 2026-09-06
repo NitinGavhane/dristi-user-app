@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../routes/app_routes.dart';
 
@@ -25,6 +26,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _progress;
   late final Animation<double> _spinner;
   Timer? _navTimer;
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -73,21 +75,39 @@ class _SplashScreenState extends State<SplashScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LocationProvider>().requestLocation();
     });
-    _navTimer = Timer(const Duration(milliseconds: 2800), () {
-      if (!mounted) return;
-      if (widget.pendingProductId != null) {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.productDetail,
-          arguments: {
-            'product_id': widget.pendingProductId,
-            'ref': widget.pendingRefCode,
-          },
-        );
-      } else {
-        Navigator.pushReplacementNamed(context, '/main');
-      }
-    });
+    // An outer cap so a hung session restore can never leave the splash frozen
+    // forever; _navigate is single-flight so only the first completion wins.
+    _navTimer = Timer(const Duration(seconds: 6), _navigate);
+    _navigate();
+  }
+
+  Future<void> _navigate() async {
+    if (_navigated || !mounted) return;
+    // Hold the splash for its brand moment, AND until the cached session is
+    // restored, so the home screen never opens in a false logged-out state.
+    // The cap keeps a slow token refresh from stalling the app.
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 1600)),
+      context.read<AuthProvider>().initialized.timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {},
+          ),
+    ]);
+    if (_navigated || !mounted) return;
+    _navigated = true;
+    _navTimer?.cancel();
+    if (widget.pendingProductId != null) {
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.productDetail,
+        arguments: {
+          'product_id': widget.pendingProductId,
+          'ref': widget.pendingRefCode,
+        },
+      );
+    } else {
+      Navigator.pushReplacementNamed(context, '/main');
+    }
   }
 
   @override
