@@ -44,31 +44,30 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
+    // Background session refresh — best-effort. The cached user is kept in all
+    // cases so the app never force-logs the user out on restart. A stale
+    // session will simply fail on the next authenticated request, at which
+    // point the user can re-login. Only the explicit logout() method should
+    // clear the session.
     try {
       final profile = await AuthApiService.getProfile();
       _user = User.fromJson(profile);
       await _cacheUser(_user!);
     } on ApiException catch (e) {
       if (e.statusCode == 401) {
-        // The access token is rejected — it may simply be expired. Try once to
-        // refresh it, keeping the cached session alive either way.
+        // Access token expired — try a single refresh attempt. If the refresh
+        // token itself is rejected we still keep the cached session: the user
+        // stays logged in with stale data and can re-login when an action
+        // actually requires a valid token.
         try {
           await AuthApiService.refreshToken();
           final profile = await AuthApiService.getProfile();
           _user = User.fromJson(profile);
           await _cacheUser(_user!);
-        } on ApiException catch (refreshError) {
-          if (refreshError.statusCode == 401) {
-            // The server explicitly rejected the refresh token, so this session
-            // genuinely can no longer be restored. Only then do we sign out.
-            _user = null;
-            await _clearCachedUser();
-            await AuthApiService.logout();
-          }
-          // Any other refresh failure (offline, timeout, 5xx) is transient —
-          // keep the cached session and tokens so the next launch retries.
         } catch (_) {
-          // Non-API exception during refresh — keep the cached session.
+          // Refresh failed (401 or network) — keep the cached session intact.
+          // The user will appear logged in until they hit an action that
+          // needs a fresh token, which will surface a proper re-login prompt.
         }
       }
       // Non-401 failures (network, 5xx) also keep the cached session.
@@ -371,6 +370,17 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Called by other providers/services when an authenticated API call returns
+  /// 401 *after* the background refresh has already tried and failed. This is
+  /// the only path (besides explicit logout) that should clear the session.
+  Future<void> handleAuthFailure() async {
+    if (_user == null) return;
+    _user = null;
+    await _clearCachedUser();
+    await AuthApiService.logout();
+    notifyListeners();
   }
 
   Future<void> logout() async {

@@ -103,15 +103,21 @@ class _MainShellState extends State<MainShell> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        final now = DateTime.now();
-        if (_lastBackPress == null ||
-            now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
-          _lastBackPress = now;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Press back again to exit')),
-          );
+        if (_currentIndex != 0) {
+          // Not on Home — go back to the Home tab instead of exiting.
+          setState(() => _currentIndex = 0);
         } else {
-          SystemNavigator.pop();
+          // On Home — double-press within 2s to exit the app.
+          final now = DateTime.now();
+          if (_lastBackPress == null ||
+              now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+            _lastBackPress = now;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Press back again to exit')),
+            );
+          } else {
+            SystemNavigator.pop();
+          }
         }
       },
       child: Scaffold(

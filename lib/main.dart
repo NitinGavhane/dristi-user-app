@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_cashfree_pg_sdk/api/cfpaymentgateway/cfpaymentgatewayservice.dart';
 import 'core/services/api_client.dart';
 import 'core/services/referral_link_service.dart';
 import 'core/theme/app_theme.dart';
@@ -20,6 +21,11 @@ import 'features/splash/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient.init();
+  // Initialize Cashfree payment gateway SDK (mobile only). On web the
+  // cashfree.js script is loaded on demand, so no init is needed there.
+  try {
+    CFPaymentGatewayService();
+  } catch (_) {}
   // A shared link is opened as a plain URL on the website, so read `?ref=` (and
   // any /product/<id>) from the address bar before the first frame. On
   // Android/iOS Uri.base is inert and the deep-link handler below does this.

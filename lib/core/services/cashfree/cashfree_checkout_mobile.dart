@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter_cashfree_pg_sdk/api/cfpaymentgateway/cfpaymentgatewayservice.dart';
 import 'package:flutter_cashfree_pg_sdk/api/cfpayment/cfwebcheckoutpayment.dart';
 import 'package:flutter_cashfree_pg_sdk/api/cferrorresponse/cferrorresponse.dart';
@@ -33,13 +34,20 @@ class CashfreeCheckout {
 
     final payment = CFWebCheckoutPaymentBuilder().setSession(session).build();
 
+    log('Cashfree: opening checkout for order ${options.cashfreeOrderId} '
+        '(env=${options.cashfreeEnvironment})');
+
     CFPaymentGatewayService().setCallback(
       (orderId) {
-        // Success callback receives the merchant order id (cashfree_order_id).
+        log('Cashfree: payment success for order $orderId');
         _onSuccess?.call(CashfreeSuccess(cashfreeOrderId: orderId));
       },
       (CFErrorResponse error, String orderId) {
-        _onError?.call(error.getMessage() ?? 'Payment failed');
+        final code = error.getCode();
+        final message = error.getMessage();
+        log('Cashfree: payment error for order $orderId — '
+            'code=$code message=$message');
+        _onError?.call(message ?? 'Payment failed. Please try again.');
       },
     );
     CFPaymentGatewayService().doPayment(payment);
