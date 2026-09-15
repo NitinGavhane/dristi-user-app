@@ -29,6 +29,9 @@ dependencies:
   # Opens the system save/share sheet for a downloaded PDF; on web it triggers
   # a browser download. Used for the order invoice.
   printing: ^5.13.0
+  # Plays the optional product video on the product details page. Backed by
+  # ExoPlayer on Android, AVPlayer on iOS and an HTML <video> element on web.
+  video_player: ^2.9.2
 
 dev_dependencies:
   flutter_test:

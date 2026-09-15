@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import 'cart_item.dart';
 
+/// A product video shown on the details page. `thumbnailUrl` is optional; when
+/// absent the player renders its first frame as the poster.
+class ProductVideo {
+  final String videoUrl;
+  final String? thumbnailUrl;
+
+  const ProductVideo({required this.videoUrl, this.thumbnailUrl});
+}
+
 class Product {
   final String id;
   final String title;
@@ -24,6 +33,11 @@ class Product {
   final String badge;
   final int stock;
   final String imageUrl;
+  /// All product photos, primary first. Falls back to [imageUrl] when the
+  /// detail response has not been loaded yet.
+  final List<String> images;
+  /// Product videos (at most one in practice). Empty when the product has none.
+  final List<ProductVideo> videos;
   final String gender;
   final double cgstPercentage;
   final double sgstPercentage;
@@ -51,6 +65,8 @@ class Product {
     this.badge = '',
     this.stock = 50,
     this.imageUrl = '',
+    this.images = const [],
+    this.videos = const [],
     this.gender = '',
     this.cgstPercentage = 9.0,
     this.sgstPercentage = 9.0,
@@ -83,6 +99,10 @@ class Product {
       isReturnable: apiProduct.isReturnable,
       stock: apiProduct.stock,
       imageUrl: apiProduct.primaryImage ?? '',
+      images: apiProduct.orderedImageUrls,
+      videos: apiProduct.videos
+          .map((v) => ProductVideo(videoUrl: v.videoUrl, thumbnailUrl: v.thumbnailUrl))
+          .toList(),
       gender: apiProduct.gender,
       cgstPercentage: apiProduct.cgstPercentage,
       sgstPercentage: apiProduct.sgstPercentage,
@@ -130,6 +150,8 @@ class Product {
     String? badge,
     int? stock,
     String? imageUrl,
+    List<String>? images,
+    List<ProductVideo>? videos,
     String? gender,
     double? cgstPercentage,
     double? sgstPercentage,
@@ -157,6 +179,8 @@ class Product {
       badge: badge ?? this.badge,
       stock: stock ?? this.stock,
       imageUrl: imageUrl ?? this.imageUrl,
+      images: images ?? this.images,
+      videos: videos ?? this.videos,
       gender: gender ?? this.gender,
       cgstPercentage: cgstPercentage ?? this.cgstPercentage,
       sgstPercentage: sgstPercentage ?? this.sgstPercentage,
@@ -211,6 +235,26 @@ class ApiProductImage {
   }
 }
 
+class ApiProductVideo {
+  final String id;
+  final String videoUrl;
+  final String? thumbnailUrl;
+
+  const ApiProductVideo({
+    required this.id,
+    required this.videoUrl,
+    this.thumbnailUrl,
+  });
+
+  factory ApiProductVideo.fromJson(Map<String, dynamic> json) {
+    return ApiProductVideo(
+      id: json['id'] as String,
+      videoUrl: json['video_url'] as String,
+      thumbnailUrl: json['thumbnail_url'] as String?,
+    );
+  }
+}
+
 class ApiProduct {
   final String id;
   final String categoryId;
@@ -235,6 +279,7 @@ class ApiProduct {
   final DateTime updatedAt;
   final List<ApiProductVariant> variants;
   final List<ApiProductImage> images;
+  final List<ApiProductVideo> videos;
   final List<String>? _flatSizes;
   final List<String>? _flatColors;
 
@@ -265,6 +310,7 @@ class ApiProduct {
     required this.updatedAt,
     this.variants = const [],
     this.images = const [],
+    this.videos = const [],
     List<String>? flatSizes,
     List<String>? flatColors,
   }) : _flatSizes = flatSizes,
@@ -273,6 +319,14 @@ class ApiProduct {
   String? get primaryImage =>
       images.where((i) => i.isPrimary).firstOrNull?.imageUrl ??
       images.firstOrNull?.imageUrl;
+
+  /// Every product photo URL, primary image first, in a stable order suitable
+  /// for a gallery.
+  List<String> get orderedImageUrls {
+    final ordered = [...images]
+      ..sort((a, b) => (b.isPrimary ? 1 : 0).compareTo(a.isPrimary ? 1 : 0));
+    return ordered.map((i) => i.imageUrl).where((u) => u.isNotEmpty).toList();
+  }
 
   List<String> get availableSizes {
     if (variants.isNotEmpty) {
@@ -301,6 +355,10 @@ class ApiProduct {
         ?.map((i) => ApiProductImage.fromJson(i as Map<String, dynamic>))
         .toList();
 
+    final parsedVideos = (json['videos'] as List<dynamic>?)
+        ?.map((v) => ApiProductVideo.fromJson(v as Map<String, dynamic>))
+        .toList();
+
     return ApiProduct(
       id: json['id'] as String,
       categoryId: json['category_id'] as String,
@@ -325,6 +383,7 @@ class ApiProduct {
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : DateTime.now(),
       variants: parsedVariants ?? [],
       images: parsedImages ?? [],
+      videos: parsedVideos ?? [],
       flatSizes: (json['sizes'] as List<dynamic>?)?.cast<String>().toList(),
       flatColors: (json['colors'] as List<dynamic>?)?.cast<String>().toList(),
     );

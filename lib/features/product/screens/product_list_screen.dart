@@ -34,9 +34,13 @@ class ProductListScreen extends StatefulWidget {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   static const double _kMaxPrice = 50000;
+  // Quick "under ₹X" price points shown as circular buttons above the grid.
+  static const List<double> _kPriceChips = [199, 299, 499, 799, 999];
   String? _selectedSize;
   String? _selectedColor;
   late double _maxPrice;
+  // The active price chip (an "under ₹X" cap), or null when none is chosen.
+  double? _selectedPriceChip;
   String _sortBy = 'Popular';
   final TextEditingController _searchCtrl = TextEditingController();
   String _search = '';
@@ -172,6 +176,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                   ),
                 ),
+                _priceChips(),
                 if (_products.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -244,6 +249,82 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
+  /// Circular "under ₹X" price-filter buttons. Tapping one caps the grid at
+  /// that price; tapping the active one clears it. The selection is highlighted.
+  Widget _priceChips() {
+    return Container(
+      margin: const EdgeInsets.only(top: AppDimensions.sm),
+      height: 82,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppDimensions.md),
+        children: _kPriceChips.map((value) {
+          final selected = _selectedPriceChip == value;
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () => setState(() {
+                if (selected) {
+                  _selectedPriceChip = null;
+                  _maxPrice = widget.maxPrice ?? _kMaxPrice;
+                } else {
+                  _selectedPriceChip = value;
+                  _maxPrice = value;
+                }
+              }),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? AppColors.primary : AppColors.surface,
+                      border: Border.all(
+                        color: selected ? AppColors.primary : AppColors.divider,
+                        width: selected ? 2 : 1,
+                      ),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      '₹${value.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: selected ? AppColors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Under',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: selected ? AppColors.primary : AppColors.textHint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   void _showSortSheet(BuildContext context) {
     final sorts = ['Popular', 'Newest', 'Rating', 'Price: Low to High', 'Price: High to Low'];
     showModalBottomSheet(
@@ -299,6 +380,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       setState(() {
                         _selectedSize = null;
                         _selectedColor = null;
+                        _selectedPriceChip = null;
                         _maxPrice = widget.maxPrice ?? _kMaxPrice;
                       });
                       Navigator.pop(ctx);
@@ -334,7 +416,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 activeColor: AppColors.primary,
                 onChanged: (v) {
                   setSheetState(() => _maxPrice = v);
-                  setState(() => _maxPrice = v);
+                  setState(() {
+                    _maxPrice = v;
+                    // A manual slider adjustment supersedes any active chip.
+                    _selectedPriceChip = null;
+                  });
                 },
               ),
               const SizedBox(height: AppDimensions.md),

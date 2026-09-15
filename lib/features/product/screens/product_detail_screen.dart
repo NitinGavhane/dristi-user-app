@@ -15,6 +15,7 @@ import '../../../providers/cart_provider.dart';
 import '../../../providers/delivery_provider.dart';
 import '../../../providers/product_provider.dart';
 import '../../../providers/wishlist_provider.dart';
+import '../widgets/product_video_player.dart';
 import '../../checkout/screens/checkout_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -32,8 +33,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String _selectedSize = '';
   String _selectedColor = '';
   final int _quantity = 1;
+  final PageController _galleryController = PageController();
+  int _currentImage = 0;
 
   Product get _product => _fullProduct ?? widget.product;
+
+  /// The photos to show in the header gallery, primary first, with a graceful
+  /// fall back to the single list-view image while the detail is still loading.
+  List<String> get _galleryImages {
+    if (_product.images.isNotEmpty) return _product.images;
+    if (_product.imageUrl.isNotEmpty) return [_product.imageUrl];
+    return const [];
+  }
 
   /// Delivery chip text reflecting the store's actual policy, rather than a
   /// hardcoded "Free Delivery".
@@ -49,6 +60,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _selectedSize = widget.product.sizes.isNotEmpty ? widget.product.sizes.first : '';
     _selectedColor = widget.product.colors.isNotEmpty ? widget.product.colors.first : '';
     _fetchDetail();
+  }
+
+  @override
+  void dispose() {
+    _galleryController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchDetail() async {
@@ -240,50 +257,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               flexibleSpace: FlexibleSpaceBar(
                 background: Hero(
                   tag: 'product-${product.id}',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: product.gradientColors,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    // Show the real product photo when there is one; the
-                    // clothing icon is only a fallback for a missing/broken
-                    // image, not an overlay drawn on top of every photo.
-                    child: product.imageUrl.isEmpty
-                        ? Center(
-                            child: Icon(
-                              Icons.checkroom_rounded,
-                              size: 160,
-                              color: AppColors.white.withValues(alpha: 0.3),
-                            ),
-                          )
-                        : CachedNetworkImage(
-                            imageUrl: product.imageUrl,
-                            // Contain, not cover: the photo's aspect ratio is
-                            // whatever the seller uploaded, and cropping it to
-                            // this header cut the top and bottom off the
-                            // garment. The gradient fills the margins.
-                            fit: BoxFit.contain,
-                            width: double.infinity,
-                            height: double.infinity,
-                            placeholder: (_, __) => Center(
-                              child: Icon(
-                                Icons.checkroom_rounded,
-                                size: 160,
-                                color: AppColors.white.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            errorWidget: (_, __, ___) => Center(
-                              child: Icon(
-                                Icons.checkroom_rounded,
-                                size: 160,
-                                color: AppColors.white.withValues(alpha: 0.3),
-                              ),
-                            ),
-                          ),
-                  ),
+                  child: _buildGallery(product),
                 ),
               ),
             ),
@@ -532,6 +506,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ),
+            if (product.videos.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppDimensions.md,
+                    0,
+                    AppDimensions.md,
+                    AppDimensions.md,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Product Video', style: AppTextStyles.subtitle),
+                      const SizedBox(height: AppDimensions.sm),
+                      ProductVideoPlayer(
+                        videoUrl: product.videos.first.videoUrl,
+                        thumbnailUrl: product.videos.first.thumbnailUrl,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -629,6 +625,73 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
     );
   }
+
+  /// The collapsing-header gallery: a swipeable, contain-fit page per photo
+  /// with a dot indicator. Photos are shown contain (never cropped) over the
+  /// product's gradient, matching the storefront's image convention.
+  Widget _buildGallery(Product product) {
+    final images = _galleryImages;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: product.gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: images.isEmpty
+          ? _galleryFallback()
+          : Stack(
+              children: [
+                PageView.builder(
+                  controller: _galleryController,
+                  itemCount: images.length,
+                  onPageChanged: (i) => setState(() => _currentImage = i),
+                  itemBuilder: (_, i) => CachedNetworkImage(
+                    imageUrl: images[i],
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    height: double.infinity,
+                    placeholder: (_, __) => _galleryFallback(),
+                    errorWidget: (_, __, ___) => _galleryFallback(),
+                  ),
+                ),
+                if (images.length > 1)
+                  Positioned(
+                    bottom: 12,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(images.length, (i) {
+                        final active = i == _currentImage;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: active ? 18 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppColors.white
+                                : AppColors.white.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  Widget _galleryFallback() => Center(
+        child: Icon(
+          Icons.checkroom_rounded,
+          size: 160,
+          color: AppColors.white.withValues(alpha: 0.3),
+        ),
+      );
 
   Widget _infoChip(IconData icon, String label) {
     return Container(
