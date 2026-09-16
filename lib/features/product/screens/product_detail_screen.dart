@@ -511,6 +511,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ),
+            // A dedicated video section below the details, in addition to the
+            // gallery slide, so shoppers who scroll past the photos still see it.
+            if (_galleryVideo != null) ...[
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppDimensions.md),
+                  child: Divider(color: AppColors.divider),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppDimensions.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Product Video', style: AppTextStyles.subtitle),
+                      const SizedBox(height: AppDimensions.sm),
+                      ProductVideoPlayer(
+                        videoUrl: _galleryVideo!.videoUrl,
+                        thumbnailUrl: _galleryVideo!.thumbnailUrl,
+                        posterFit: BoxFit.contain,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
