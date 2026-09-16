@@ -15,10 +15,26 @@ class ProductVideoPlayer extends StatefulWidget {
   final String videoUrl;
   final String? thumbnailUrl;
 
+  /// Corner rounding of the player. Square in the header gallery, where the
+  /// video is just another full-bleed slide next to the photos.
+  final BorderRadius borderRadius;
+
+  /// How the poster fills the frame before playback starts. Matches the
+  /// gallery's `BoxFit.contain` so swiping from a photo to the video does not
+  /// change how the garment is framed.
+  final BoxFit posterFit;
+
+  /// When true the player fills its parent instead of sizing itself to the
+  /// video's aspect ratio — used inside the fixed-height gallery.
+  final bool expand;
+
   const ProductVideoPlayer({
     super.key,
     required this.videoUrl,
     this.thumbnailUrl,
+    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
+    this.posterFit = BoxFit.cover,
+    this.expand = false,
   });
 
   @override
@@ -90,37 +106,48 @@ class _ProductVideoPlayerState extends State<ProductVideoPlayer> {
         ? controller.value.aspectRatio
         : 16 / 9;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: AspectRatio(
-        aspectRatio: aspect <= 0 ? 16 / 9 : aspect,
-        child: GestureDetector(
-          onTap: _startPlayback,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_initialized && controller != null)
-                VideoPlayer(controller)
-              else
-                _poster(),
-              if (_initialized && controller != null)
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: VideoProgressIndicator(
-                    controller,
-                    allowScrubbing: true,
-                    colors: const VideoProgressColors(
-                      playedColor: AppColors.primary,
-                      bufferedColor: Colors.white54,
-                      backgroundColor: Colors.white24,
-                    ),
-                  ),
+    final frame = GestureDetector(
+      onTap: _startPlayback,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_initialized && controller != null)
+            // Letterboxed so a portrait reel is never cropped, exactly like the
+            // contained product photos it sits beside.
+            Center(
+              child: AspectRatio(
+                aspectRatio: aspect <= 0 ? 16 / 9 : aspect,
+                child: VideoPlayer(controller),
+              ),
+            )
+          else
+            _poster(),
+          if (_initialized && controller != null)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: VideoProgressIndicator(
+                controller,
+                allowScrubbing: true,
+                colors: const VideoProgressColors(
+                  playedColor: AppColors.primary,
+                  bufferedColor: Colors.white54,
+                  backgroundColor: Colors.white24,
                 ),
-              _overlay(controller),
-            ],
-          ),
-        ),
+              ),
+            ),
+          _overlay(controller),
+        ],
       ),
+    );
+
+    return ClipRRect(
+      borderRadius: widget.borderRadius,
+      child: widget.expand
+          ? SizedBox.expand(child: frame)
+          : AspectRatio(
+              aspectRatio: aspect <= 0 ? 16 / 9 : aspect,
+              child: frame,
+            ),
     );
   }
 
@@ -129,7 +156,7 @@ class _ProductVideoPlayerState extends State<ProductVideoPlayer> {
     if (thumb != null && thumb.isNotEmpty) {
       return CachedNetworkImage(
         imageUrl: thumb,
-        fit: BoxFit.cover,
+        fit: widget.posterFit,
         placeholder: (_, __) => Container(color: AppColors.black),
         errorWidget: (_, __, ___) => Container(color: AppColors.black),
       );

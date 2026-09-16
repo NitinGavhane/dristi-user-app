@@ -46,6 +46,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return const [];
   }
 
+  /// The product's video, shown as the last slide of the header gallery (a
+  /// product has at most one). Null when the product has none.
+  ProductVideo? get _galleryVideo =>
+      _product.videos.isNotEmpty ? _product.videos.first : null;
+
   /// Delivery chip text reflecting the store's actual policy, rather than a
   /// hardcoded "Free Delivery".
   String get _deliveryLabel =>
@@ -506,28 +511,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ),
-            if (product.videos.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppDimensions.md,
-                    0,
-                    AppDimensions.md,
-                    AppDimensions.md,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Product Video', style: AppTextStyles.subtitle),
-                      const SizedBox(height: AppDimensions.sm),
-                      ProductVideoPlayer(
-                        videoUrl: product.videos.first.videoUrl,
-                        thumbnailUrl: product.videos.first.thumbnailUrl,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -631,6 +614,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   /// product's gradient, matching the storefront's image convention.
   Widget _buildGallery(Product product) {
     final images = _galleryImages;
+    final video = _galleryVideo;
+    // The video is not a section of its own: it rides along as the slide after
+    // the last photo, so one swipe gets the shopper from stills to video.
+    final slideCount = images.length + (video != null ? 1 : 0);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -639,31 +626,42 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           end: Alignment.bottomRight,
         ),
       ),
-      child: images.isEmpty
+      child: slideCount == 0
           ? _galleryFallback()
           : Stack(
               children: [
                 PageView.builder(
                   controller: _galleryController,
-                  itemCount: images.length,
+                  itemCount: slideCount,
                   onPageChanged: (i) => setState(() => _currentImage = i),
-                  itemBuilder: (_, i) => CachedNetworkImage(
-                    imageUrl: images[i],
-                    fit: BoxFit.contain,
-                    width: double.infinity,
-                    height: double.infinity,
-                    placeholder: (_, __) => _galleryFallback(),
-                    errorWidget: (_, __, ___) => _galleryFallback(),
-                  ),
+                  itemBuilder: (_, i) {
+                    if (video != null && i == slideCount - 1) {
+                      return ProductVideoPlayer(
+                        videoUrl: video.videoUrl,
+                        thumbnailUrl: video.thumbnailUrl,
+                        borderRadius: BorderRadius.zero,
+                        posterFit: BoxFit.contain,
+                        expand: true,
+                      );
+                    }
+                    return CachedNetworkImage(
+                      imageUrl: images[i],
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder: (_, __) => _galleryFallback(),
+                      errorWidget: (_, __, ___) => _galleryFallback(),
+                    );
+                  },
                 ),
-                if (images.length > 1)
+                if (slideCount > 1)
                   Positioned(
                     bottom: 12,
                     left: 0,
                     right: 0,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(images.length, (i) {
+                      children: List.generate(slideCount, (i) {
                         final active = i == _currentImage;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
