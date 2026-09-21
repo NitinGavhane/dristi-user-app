@@ -642,6 +642,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         borderRadius: BorderRadius.zero,
                         posterFit: BoxFit.contain,
                         expand: true,
+                        // The PageView keeps neighbouring slides alive, so the
+                        // player has to be told when it has been swiped past.
+                        isVisible: _currentImage == slideCount - 1,
                       );
                     }
                     return CachedNetworkImage(

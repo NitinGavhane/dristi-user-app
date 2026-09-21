@@ -13,15 +13,11 @@ class OfferStrip extends StatelessWidget {
     final delivery = context.watch<DeliveryProvider>();
     final settings = delivery.settings;
 
-    if (settings.fee <= 0) {
-      return const SizedBox.shrink();
-    }
-
-    final message = settings.freeAbove != null && settings.freeAbove! > 0
-        ? 'Complimentary delivery on orders above \u20B9${settings.freeAbove!.toStringAsFixed(0)}'
-        : settings.hasStateFees
-            ? 'Delivery from \u20B9${settings.minimumFee.toStringAsFixed(0)} · by state'
-            : 'Flat \u20B9${settings.fee.toStringAsFixed(0)} delivery, anywhere in India';
+    // Read the policy through `promoLine`, never off `fee` alone: a seller who
+    // switches charging off in the Admin app keeps the amount saved for later,
+    // so a bare `fee > 0` test kept announcing a charge the checkout no longer
+    // applies. `promoLine` weighs `enabled` too, and says so when it is free.
+    final message = settings.promoLine;
 
     return Container(
       color: AppColors.primaryDark,

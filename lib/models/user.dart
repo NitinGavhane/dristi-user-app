@@ -9,6 +9,12 @@ class User {
   final bool isVerified;
   final String role;
 
+  /// active | deactivated | deleted. A signed-in session only ever sees
+  /// "active" — the backend rejects the other two — but it is carried so the
+  /// UI can react if a stale cached profile is restored on cold start.
+  final String accountStatus;
+  final bool promotionalEmails;
+
   const User({
     required this.id,
     required this.fullName,
@@ -19,6 +25,8 @@ class User {
     this.referralCode = '',
     this.isVerified = true,
     this.role = 'customer',
+    this.accountStatus = 'active',
+    this.promotionalEmails = true,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -32,6 +40,8 @@ class User {
       referralCode: json['referral_code'] as String? ?? '',
       isVerified: json['is_verified'] as bool? ?? false,
       role: json['role'] as String? ?? 'customer',
+      accountStatus: json['account_status'] as String? ?? 'active',
+      promotionalEmails: json['promotional_emails'] as bool? ?? true,
     );
   }
 
@@ -46,6 +56,8 @@ class User {
       'referral_code': referralCode,
       'is_verified': isVerified,
       'role': role,
+      'account_status': accountStatus,
+      'promotional_emails': promotionalEmails,
     };
   }
 }

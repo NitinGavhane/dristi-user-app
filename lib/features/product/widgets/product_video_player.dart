@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/route_observer.dart';
 
 /// Inline player for a product's video.
 ///
@@ -28,6 +29,11 @@ class ProductVideoPlayer extends StatefulWidget {
   /// video's aspect ratio — used inside the fixed-height gallery.
   final bool expand;
 
+  /// False while this slide is scrolled off in the gallery. Playback stops the
+  /// moment it goes false, so a video never keeps talking from a slide the
+  /// shopper has swiped past.
+  final bool isVisible;
+
   const ProductVideoPlayer({
     super.key,
     required this.videoUrl,
@@ -35,23 +41,70 @@ class ProductVideoPlayer extends StatefulWidget {
     this.borderRadius = const BorderRadius.all(Radius.circular(14)),
     this.posterFit = BoxFit.cover,
     this.expand = false,
+    this.isVisible = true,
   });
 
   @override
   State<ProductVideoPlayer> createState() => _ProductVideoPlayerState();
 }
 
-class _ProductVideoPlayerState extends State<ProductVideoPlayer> {
+class _ProductVideoPlayerState extends State<ProductVideoPlayer>
+    with RouteAware, WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _initialized = false;
   bool _initializing = false;
   bool _error = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pushing another screen leaves the product page alive underneath, so
+    // nothing here is disposed and the video would play on unseen. Subscribing
+    // to the navigator's observer is the only way to be told about it.
+    final route = ModalRoute.of(context);
+    if (route is ModalRoute<void>) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didUpdateWidget(ProductVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isVisible && !widget.isVisible) _pause();
+  }
+
+  @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.removeListener(_onTick);
     _controller?.dispose();
     super.dispose();
+  }
+
+  /// Another screen was pushed on top of the product page.
+  @override
+  void didPushNext() => _pause();
+
+  /// The app was backgrounded, or a call/notification took the foreground.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _pause();
+  }
+
+  /// Stops playback without tearing the controller down, so coming back to the
+  /// page resumes from where the shopper left off rather than reloading.
+  void _pause() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isPlaying) return;
+    controller.pause();
+    if (mounted) setState(() {});
   }
 
   void _onTick() {
@@ -88,7 +141,9 @@ class _ProductVideoPlayerState extends State<ProductVideoPlayer> {
         _initialized = true;
         _initializing = false;
       });
-      controller.play();
+      // The shopper may have swiped on or left the page while the video was
+      // still loading; don't start talking into an empty room.
+      if (widget.isVisible) controller.play();
     } catch (_) {
       if (mounted) {
         setState(() {

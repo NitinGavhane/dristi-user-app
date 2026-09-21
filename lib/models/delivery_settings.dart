@@ -74,7 +74,7 @@ class DeliverySettings {
 
   /// Headline for the site announcement bar and assurance strips.
   String get promoLine {
-    if (isAlwaysFree) return 'FREE SHIPPING ON ALL ORDERS';
+    if (isAlwaysFree) return 'FREE DELIVERY ON ALL ORDERS';
     if (freeAbove != null) {
       return 'FREE SHIPPING ON ORDERS OVER ₹${_amount(freeAbove!)}';
     }
@@ -86,7 +86,7 @@ class DeliverySettings {
 
   /// Sentence form of [promoLine], for trust badges that read as prose.
   String get promoSentence {
-    if (isAlwaysFree) return 'Free shipping on every order';
+    if (isAlwaysFree) return 'Free delivery on every order';
     if (freeAbove != null) {
       return 'Free shipping on orders over ₹${_amount(freeAbove!)}';
     }

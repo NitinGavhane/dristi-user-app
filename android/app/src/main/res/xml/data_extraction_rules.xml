@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 (API 31) and above.
+
+  `android:allowBackup="false"` in the manifest already stops Google Drive
+  Auto Backup, but it does NOT cover device-to-device transfer on Android 12+,
+  which is governed only by this file. Both paths are declared here so a
+  session can never be carried into a new install by either route.
+
+  Everything the app persists lives in one file — shared_preferences writes
+  `FlutterSharedPreferences.xml`, which holds the access token, the refresh
+  token and the cached profile alongside the wishlist and referral code.
+  Excluding it means a reinstalled (or transferred) app always starts signed
+  out, with a clean slate, which is what a shopper expects after deleting it.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />
+    </device-transfer>
+</data-extraction-rules>

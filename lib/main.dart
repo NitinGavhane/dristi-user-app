@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_cashfree_pg_sdk/api/cfpaymentgateway/cfpaymentgatewayservice.dart';
+import 'core/route_observer.dart';
 import 'core/services/api_client.dart';
 import 'core/services/referral_link_service.dart';
 import 'core/theme/app_theme.dart';
@@ -130,6 +131,9 @@ class _GarmentEcommerceAppState extends State<GarmentEcommerceApp> {
           pendingRefCode: _pendingRefCode,
         ),
         onGenerateRoute: AppRoutes.generateRoute,
+        // Lets screens hear about routes pushed over them — the product video
+        // uses it to stop playing when it is no longer on screen.
+        navigatorObservers: [appRouteObserver],
       ),
     );
   }

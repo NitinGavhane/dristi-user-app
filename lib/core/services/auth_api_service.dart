@@ -140,6 +140,45 @@ class AuthApiService {
     });
   }
 
+  // --- Account deactivation & deletion -------------------------------------
+  // Deactivation is reversible: signing in again restores everything, so
+  // there is no reactivate call. Deletion is permanent and needs the three
+  // acknowledgements as well as the OTP.
+
+  static Future<Map<String, dynamic>> sendDeactivationOtp() async {
+    return ApiClient.post('/api/v1/auth/deactivate/send-otp');
+  }
+
+  static Future<Map<String, dynamic>> deactivateAccount({
+    required String otp,
+  }) async {
+    return ApiClient.post('/api/v1/auth/deactivate', body: {'otp': otp});
+  }
+
+  static Future<Map<String, dynamic>> deletionEligibility() async {
+    return ApiClient.get('/api/v1/auth/delete/eligibility');
+  }
+
+  static Future<Map<String, dynamic>> sendDeletionOtp() async {
+    return ApiClient.post('/api/v1/auth/delete/send-otp');
+  }
+
+  static Future<Map<String, dynamic>> deleteAccount({
+    required String otp,
+    required String reason,
+    required bool acceptedTerms,
+    required bool acknowledgedBalanceForfeit,
+    required bool acknowledgedNoReturns,
+  }) async {
+    return ApiClient.post('/api/v1/auth/delete', body: {
+      'otp': otp,
+      'reason': reason,
+      'accepted_terms': acceptedTerms,
+      'acknowledged_balance_forfeit': acknowledgedBalanceForfeit,
+      'acknowledged_no_returns': acknowledgedNoReturns,
+    });
+  }
+
   static Future<void> logout() async {
     await ApiClient.clearTokens();
   }

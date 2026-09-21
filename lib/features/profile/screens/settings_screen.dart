@@ -5,6 +5,8 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_text_styles.dart';
 import 'edit_profile_screen.dart';
 import 'address_list_screen.dart';
+import 'deactivate_account_screen.dart';
+import 'delete_account_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -39,25 +41,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text('More', style: AppTextStyles.subtitle),
             const SizedBox(height: AppDimensions.sm),
             _settingTile(Iconsax.info_circle, 'About', 'Version 1.0.0'),
+            const SizedBox(height: AppDimensions.lg),
+            // Kept apart, and last, so neither is ever a mis-tap away from an
+            // ordinary setting. Deactivate is listed first: it is the one most
+            // people who get this far actually want.
+            Text('Account Control', style: AppTextStyles.subtitle),
+            const SizedBox(height: AppDimensions.sm),
+            _settingTile(
+              Iconsax.pause_circle,
+              'Deactivate Account',
+              'Take a break — nothing is deleted, sign in to restore',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeactivateAccountScreen())),
+            ),
+            _settingTile(
+              Iconsax.trash,
+              'Delete Account',
+              'Permanently delete your account and data',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeleteAccountScreen())),
+              danger: true,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _settingTile(IconData icon, String title, String subtitle, {VoidCallback? onTap}) {
+  Widget _settingTile(IconData icon, String title, String subtitle, {VoidCallback? onTap, bool danger = false}) {
+    final accent = danger ? AppColors.error : AppColors.textPrimary;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Container(
           width: 40, height: 40,
           decoration: BoxDecoration(
-            color: AppColors.divider,
+            color: danger ? AppColors.errorContainer : AppColors.divider,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: 20, color: AppColors.textPrimary),
+          child: Icon(icon, size: 20, color: accent),
         ),
-        title: Text(title, style: AppTextStyles.body),
+        title: Text(title, style: AppTextStyles.body.copyWith(color: accent)),
         subtitle: Text(subtitle, style: AppTextStyles.caption),
         trailing: const Icon(Icons.chevron_right, color: AppColors.textHint, size: 20),
         contentPadding: const EdgeInsets.symmetric(horizontal: 4),

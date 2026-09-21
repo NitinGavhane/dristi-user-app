@@ -372,6 +372,83 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // --- Account deactivation & deletion -------------------------------------
+
+  /// Emails a confirmation code for deactivating the account.
+  Future<bool> sendDeactivationOtp() => _run(AuthApiService.sendDeactivationOtp);
+
+  /// Emails a confirmation code for deleting the account. Fails with a
+  /// readable [error] when the account still has business left open.
+  Future<bool> sendDeletionOtp() => _run(AuthApiService.sendDeletionOtp);
+
+  /// What, if anything, stands between this account and deletion. Returns
+  /// null when the check itself could not be made.
+  Future<Map<String, dynamic>?> fetchDeletionEligibility() async {
+    try {
+      return await AuthApiService.deletionEligibility();
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return null;
+    } catch (_) {
+      _error = 'Connection error. Please try again.';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Deactivates the account and ends the session. The account itself is
+  /// untouched — signing back in restores everything.
+  Future<bool> deactivateAccount({required String otp}) async {
+    final ok = await _run(() => AuthApiService.deactivateAccount(otp: otp));
+    if (ok) await logout();
+    return ok;
+  }
+
+  /// Permanently deletes the account and ends the session. There is no undo.
+  Future<bool> deleteAccount({
+    required String otp,
+    required String reason,
+    required bool acceptedTerms,
+    required bool acknowledgedBalanceForfeit,
+    required bool acknowledgedNoReturns,
+  }) async {
+    final ok = await _run(() => AuthApiService.deleteAccount(
+          otp: otp,
+          reason: reason,
+          acceptedTerms: acceptedTerms,
+          acknowledgedBalanceForfeit: acknowledgedBalanceForfeit,
+          acknowledgedNoReturns: acknowledgedNoReturns,
+        ));
+    if (ok) await logout();
+    return ok;
+  }
+
+  /// Runs an authenticated call behind the shared loading/error state that
+  /// every other method here maintains by hand.
+  Future<bool> _run(Future<Map<String, dynamic>> Function() call) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await call();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Connection error. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Called by other providers/services when an authenticated API call returns
   /// 401 *after* the background refresh has already tried and failed. This is
   /// the only path (besides explicit logout) that should clear the session.

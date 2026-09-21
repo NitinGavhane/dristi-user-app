@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 (API 30) and below, where `android:dataExtractionRules` is
+  ignored. `android:allowBackup="false"` already switches Auto Backup off
+  entirely on these versions, so this file is a belt-and-braces declaration:
+  should backup ever be turned back on, the signed-in session still must not
+  travel into a fresh install. See data_extraction_rules.xml for 12+.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />
+</full-backup-content>
